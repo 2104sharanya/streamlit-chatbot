@@ -1,59 +1,50 @@
 import streamlit as st
-from textblob import TextBlob
+import openai
+import os
+from dotenv import load_dotenv
 
-st.set_page_config(page_title="ChatBot", layout="centered")
-st.title("💬 Stylish ChatBot")
+# Load environment variables from .env
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Inject CSS for custom chat bubbles
-st.markdown("""
-    <style>
-    .chat-bubble {
-        padding: 10px 15px;
-        border-radius: 15px;
-        margin: 5px 0;
-        max-width: 75%;
-        display: inline-block;
-        font-size: 16px;
-    }
-    .user {
-        background-color: #DCF8C6;
-        color: black;
-        margin-left: auto;
-        text-align: right;
-    }
-    .bot {
-        background-color: #E4E6EB;
-        color: black;
-        margin-right: auto;
-        text-align: left;
-    }
-    </style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="ChatGPT-Style Bot", layout="centered")
+st.title("🤖 ChatGPT-Style ChatBot")
 
-# Store chat history
-if "chat" not in st.session_state:
-    st.session_state.chat = []
+# Initialize chat history
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        {"role": "system", "content": "You are a helpful assistant."}
+    ]
 
-# Reply generator
-def get_reply(user_msg):
-    polarity = TextBlob(user_msg).sentiment.polarity
-    if polarity > 0.2:
-        return "😊 You seem happy! How can I help you?"
-    elif polarity < -0.2:
-        return "😢 I'm here for you. Want to talk about it?"
-    else:
-        return "🤖 I'm listening! Tell me more."
+# Display the chat
+for msg in st.session_state.chat_history[1:]:  # Skip system prompt
+    if msg["role"] == "user":
+        with st.chat_message("user"):
+            st.markdown(msg["content"])
+    elif msg["role"] == "assistant":
+        with st.chat_message("assistant"):
+            st.markdown(msg["content"])
 
-# User input
-user_input = st.text_input("Type your message:", "")
+# Get user input
+prompt = st.chat_input("Type your message...")
 
-# Process input
-if user_input:
-    bot_response = get_reply(user_input)
-    st.session_state.chat.append(("user", user_input))
-    st.session_state.chat.append(("bot", bot_response))
+if prompt:
+    # Show user message
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
 
-# Display chat
-for role, message in st.session_state.chat:
-    bubble_class = "user" if role == "user" else "bot"
-    st.markdown(f"<div class='chat-bubble {bubble_class}'><b>{'🧑 You' if role=='user' else '🤖 Bot'}:</b> {message}</div>", unsafe_allow_html=True)
+    # Call OpenAI to get a response
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=st.session_state.chat_history
+        )
+        full_response = response.choices[0].message.content
+        message_placeholder.markdown(full_response)
+
+    # Save assistant reply
+    st.session_state.chat_history.append({"role": "assistant", "content": full_response})
