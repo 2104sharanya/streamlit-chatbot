@@ -1,11 +1,11 @@
 import streamlit as st
-import openai
 import os
 from dotenv import load_dotenv
+from openai import OpenAI
 
-# Load environment variables from .env
+# Load API key
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI()  # Automatically reads from OPENAI_API_KEY in .env
 
 st.set_page_config(page_title="ChatGPT-Style Bot", layout="centered")
 st.title("🤖 ChatGPT-Style ChatBot")
@@ -16,7 +16,7 @@ if "chat_history" not in st.session_state:
         {"role": "system", "content": "You are a helpful assistant."}
     ]
 
-# Display the chat
+# Display chat
 for msg in st.session_state.chat_history[1:]:  # Skip system prompt
     if msg["role"] == "user":
         with st.chat_message("user"):
@@ -34,17 +34,17 @@ if prompt:
         st.markdown(prompt)
     st.session_state.chat_history.append({"role": "user", "content": prompt})
 
-    # Call OpenAI to get a response
+    # Get AI response using OpenAI v1.0+
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=st.session_state.chat_history
         )
         full_response = response.choices[0].message.content
         message_placeholder.markdown(full_response)
 
-    # Save assistant reply
+    # Save bot reply
     st.session_state.chat_history.append({"role": "assistant", "content": full_response})
